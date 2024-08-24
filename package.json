@@ -9,7 +9,7 @@
   "author": "Diogo Angelim",
   "license": "MIT",
   "types": "index.ts",
-  "description": "",
+  "description": "Take screenshots from HTML input.",
   "dependencies": {
     "buffer": "^6.0.3",
     "child_process": "^1.0.2",
