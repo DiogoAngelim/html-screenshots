@@ -15,14 +15,7 @@ const icon = async (htmlContent, chromePath, options = {}) => {
             throw new Error('A path to a chrome executable must be provided.');
         }
         try {
-            return {
-                ...options,
-                jsFiles,
-                cssFiles,
-                htmlContent,
-                basePath,
-                icon: await generateImagePreview({ ...options, htmlContent, cssFiles, jsFiles, basePath, chromePath }),
-            };
+            return await generateImagePreview({ ...options, htmlContent, cssFiles, jsFiles, basePath, chromePath });
         }
         catch (error) {
             logError(error);
