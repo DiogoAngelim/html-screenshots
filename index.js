@@ -2,23 +2,27 @@ import path from 'path';
 import puppeteer from "puppeteer";
 import { userAgent, pageOptions } from './globals.js';
 ;
-const icon = async (htmlContent, chromePath, options = {}) => {
+const icon = async (htmlContent, options = {}) => {
     const logError = (error) => {
         console.error(`[Error] ${error.message}`);
     };
-    const setupVariables = async (htmlContent, chromePath, options) => {
+    const setupVariables = async (htmlContent, options) => {
         let { basePath, cssFiles, jsFiles } = options;
         basePath = basePath || process.cwd();
         cssFiles = cssFiles || [];
         jsFiles = jsFiles || [];
-        if (!chromePath) {
-            throw new Error('A path to a chrome executable must be provided.');
-        }
         try {
-            return await generateImagePreview({ ...options, htmlContent, cssFiles, jsFiles, basePath, chromePath });
+            return {
+                ...options,
+                jsFiles,
+                cssFiles,
+                htmlContent,
+                basePath,
+                icon: await generateImagePreview({ ...options, htmlContent, cssFiles, jsFiles, basePath }),
+            };
         }
         catch (error) {
-            logError(error);
+            logError(error.message);
         }
     };
     const testHtmlContent = (htmlContent) => {
@@ -70,14 +74,26 @@ const icon = async (htmlContent, chromePath, options = {}) => {
             htmlPage += `<!DOCTYPE html><html lang="en">`;
         }
         if (!hasHeadTags) {
-            htmlPage += `<head>${css}${js}</head>`;
+            htmlPage += '<head>';
+            if (js && js.length > 0) {
+                htmlPage += js;
+            }
+            if (css && css.length > 0) {
+                htmlPage += css;
+            }
+            htmlPage += '</head>';
         }
         if (!hasBodyTags) {
             htmlPage += `<body>`;
         }
         htmlPage += htmlContent;
         if (hasHeadTags) {
-            htmlPage += `${css}${js}`;
+            if (js && js.length > 0) {
+                htmlPage += js;
+            }
+            if (css && css.length > 0) {
+                htmlPage += css;
+            }
         }
         if (!hasBodyTags) {
             htmlPage += `</body>`;
@@ -96,12 +112,25 @@ const icon = async (htmlContent, chromePath, options = {}) => {
         await page.goto(`data:text/html,${encodeURIComponent(htmlContent)}`, pageOptions);
     };
     const getScreenshot = async (page, browser, path) => {
-        const screenshot = await page.screenshot({
-            path,
-            quality: 70,
-            type: 'jpeg',
-            clip: await getElementDimensions(page),
-        });
+        let screenshot = '';
+        try {
+            let clip;
+            try {
+                clip = await getElementDimensions(page);
+            }
+            catch (error) {
+                throw new Error('Unable to clip the page.');
+            }
+            screenshot = await page.screenshot({
+                path,
+                quality: 70,
+                type: 'jpeg',
+                clip,
+            });
+        }
+        catch (error) {
+            logError(error.message);
+        }
         await browser.close();
         return screenshot;
     };
@@ -111,16 +140,6 @@ const icon = async (htmlContent, chromePath, options = {}) => {
         await openPage(page, htmlContent);
         return await getScreenshot(page, browser, filePath);
     };
-    // const bufferToString = (buffer: Buffer) => {
-    //   return Buffer.from(buffer).toString('base64');
-    // };
-    // const saveBuffer = (filePath: string, buffer: Buffer) => {
-    //   fs.writeFileSync(filePath, buffer);
-    //   return bufferToString(buffer);
-    // };
-    // const getImageBuffer = async (browser: any, filePath: string, htmlContent: string): Promise<any> => {
-    //   return saveBuffer(filePath, await getBufferFromPage(browser, htmlContent, filePath));
-    // };
     const getElementDimensions = async (page) => {
         return page.evaluate(async (innerSelector) => {
             const elem = document.querySelector(innerSelector);
@@ -130,42 +149,39 @@ const icon = async (htmlContent, chromePath, options = {}) => {
             elem.scrollIntoViewIfNeeded();
             const boundingBox = elem.getBoundingClientRect();
             return {
-                x: Math.round(boundingBox.x),
-                y: Math.round(boundingBox.y),
-                width: Math.round(boundingBox.width),
-                height: Math.round(boundingBox.height),
+                x: Math.round(boundingBox.x) | 0,
+                y: Math.round(boundingBox.y) | 0,
+                width: Math.round(boundingBox.width) | 60,
+                height: Math.round(boundingBox.height) | 60,
             };
         }, 'body');
     };
     const connect = async (browserWSEndpoint) => {
-        return await puppeteer.connect({ browserWSEndpoint });
+        return await puppeteer.connect({ ...pageOptions, browserWSEndpoint });
     };
     const saveImage = async (imageSettings) => {
-        const browserWSEndpoint = await launchBrowser(imageSettings);
+        const browserWSEndpoint = await launchBrowser();
         const filePath = path.join(imageSettings.basePath, 'preview.jpeg');
         const htmlContent = formHtmlPage(imageSettings);
         const browser = await connect(browserWSEndpoint);
         return await getBufferFromPage(browser, htmlContent, filePath);
     };
-    const launchBrowser = async (options) => {
-        const browser = await puppeteer.launch({ executablePath: options.chromePath, timeout: 0 });
+    const launchBrowser = async () => {
+        const browser = await puppeteer.launch({ timeout: 0 });
         return browser.wsEndpoint();
     };
     const getIcon = async (imageOptions) => {
         return `(<img src="data:image/jpeg;base64,${await saveImage(imageOptions)}" />)`;
     };
     const generateImagePreview = async (blockOptions) => {
-        let { chromePath } = blockOptions;
-        if (chromePath) {
-            try {
-                return await getIcon(blockOptions);
-            }
-            catch (error) {
-                logError(error);
-            }
+        try {
+            return await getIcon(blockOptions);
+        }
+        catch (error) {
+            logError(error);
         }
         return icon;
     };
-    return await setupVariables(htmlContent, chromePath, options);
+    return await setupVariables(htmlContent, options);
 };
 export default icon;

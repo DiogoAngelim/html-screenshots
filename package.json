@@ -1,6 +1,6 @@
 {
   "name": "html-screenshots",
-  "version": "1.0.5",
+  "version": "1.1.6",
   "main": "index.js",
   "type": "module",
   "scripts": {
@@ -9,13 +9,9 @@
   "author": "Diogo Angelim",
   "license": "MIT",
   "types": "index.ts",
-  "description": "Take screenshots from HTML input.",
+  "description": "Take screenshots from any HTML input.",
   "dependencies": {
-    "buffer": "^6.0.3",
-    "child_process": "^1.0.2",
-    "fs": "^0.0.1-security",
-    "html-to-gutenberg": "^1.0.4",
     "path": "^0.12.7",
-    "puppeteer": "^22.15.0"
+    "puppeteer": "^23.2.0"
   }
 }
