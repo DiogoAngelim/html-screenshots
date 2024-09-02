@@ -27,8 +27,7 @@ const htmlContent = `
 
 const options = {
   cssFiles: ['styles.css'],
-  jsFiles: ['script.js'],
-  chromePath: '/path/to/chrome executable'
+  jsFiles: ['script.js']
 };
 
 (async () => {

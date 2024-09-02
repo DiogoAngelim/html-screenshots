@@ -28,7 +28,6 @@ const icon = async (htmlContent, options = {}) => {
     const testHtmlContent = (htmlContent) => {
         return {
             hasHTMLTags: /<html[^>]*>/i.test(htmlContent),
-            hasHeadTags: /<head[^>]*>/i.test(htmlContent),
             hasBodyTags: /<body[^>]*>/i.test(htmlContent),
         };
     };
@@ -67,34 +66,25 @@ const icon = async (htmlContent, options = {}) => {
     };
     const formHtmlPage = (imageSettings) => {
         const { htmlContent } = imageSettings;
-        const { hasHTMLTags, hasHeadTags, hasBodyTags } = testHtmlContent(htmlContent);
+        const { hasHTMLTags, hasBodyTags } = testHtmlContent(htmlContent);
         const { js, css } = parseFiles(imageSettings);
         let htmlPage = '';
         if (!hasHTMLTags) {
-            htmlPage += `<!DOCTYPE html><html lang="en">`;
+            htmlPage += `<!DOCTYPE html><html lang="en"><head>`;
         }
-        if (!hasHeadTags) {
-            htmlPage += '<head>';
-            if (js && js.length > 0) {
-                htmlPage += js;
-            }
-            if (css && css.length > 0) {
-                htmlPage += css;
-            }
+        if (js && js.length > 0) {
+            htmlPage += js;
+        }
+        if (css && css.length > 0) {
+            htmlPage += css;
+        }
+        if (!hasHTMLTags) {
             htmlPage += '</head>';
         }
         if (!hasBodyTags) {
             htmlPage += `<body>`;
         }
         htmlPage += htmlContent;
-        if (hasHeadTags) {
-            if (js && js.length > 0) {
-                htmlPage += js;
-            }
-            if (css && css.length > 0) {
-                htmlPage += css;
-            }
-        }
         if (!hasBodyTags) {
             htmlPage += `</body>`;
         }
@@ -104,17 +94,20 @@ const icon = async (htmlContent, options = {}) => {
         return htmlPage;
     };
     const configurePage = async (page) => {
-        page.setDefaultNavigationTimeout(0);
+        page.setDefaultNavigationTimeout(3000);
         await page.setViewport({ height: 300, width: 1440 });
         await page.setUserAgent(userAgent);
     };
     const openPage = async (page, htmlContent) => {
+        console.log(htmlContent);
         await page.goto(`data:text/html,${encodeURIComponent(htmlContent)}`, pageOptions);
     };
     const getScreenshot = async (page, browser, path) => {
         let screenshot = '';
         try {
             let clip;
+            let captureBeyondViewport = false;
+            let fullPage = false;
             try {
                 clip = await getElementDimensions(page);
             }
@@ -123,7 +116,7 @@ const icon = async (htmlContent, options = {}) => {
             }
             screenshot = await page.screenshot({
                 path,
-                quality: 70,
+                quality: 60,
                 type: 'jpeg',
                 clip,
             });
@@ -151,8 +144,8 @@ const icon = async (htmlContent, options = {}) => {
             return {
                 x: Math.round(boundingBox.x) | 0,
                 y: Math.round(boundingBox.y) | 0,
-                width: Math.round(boundingBox.width) | 60,
-                height: Math.round(boundingBox.height) | 60,
+                width: Math.round(boundingBox.width),
+                height: Math.round(boundingBox.height) | 0,
             };
         }, 'body');
     };
